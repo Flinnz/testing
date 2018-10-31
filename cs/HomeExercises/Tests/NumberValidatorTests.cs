@@ -1,16 +1,31 @@
 ﻿using System;
 using System.Collections;
+using System.Configuration;
 using NUnit.Framework;
 
-namespace HomeExercises
+namespace HomeExercises.Tests
 {
 	public class NumberValidatorTests
-	{
-		[TestCase(-3, 2, true, TestName = "WhenPrecisionIsNegative")]
-		[TestCase(0, 2, true, TestName = "WhenPrecisionIsZero")]
-		[TestCase(3, -2, true, TestName = "WhenScaleIsNegative")]
-		[TestCase(1, 2, true, TestName = "WhenScaleIsLarger_ThanPrecision")]
-		[TestCase(2, 2, true, TestName = "WhenScaleIsSame_AsPrecision")]
+	{	
+		private static IEnumerable ConstructorFailTestCases
+		{
+			get
+			{
+				yield return new TestCaseData(-3, 2, true)
+					.SetName("WhenPrecisionIsNegative");
+				yield return new TestCaseData(0, 2, true)
+					.SetName("WhenPrecisionIsZero");
+				yield return new TestCaseData(3, -2, true)
+					.SetName("WhenScaleIsNegative");
+				yield return new TestCaseData(1, 2, true)
+					.SetName("WhenScaleIsLargerThanPrecision");
+				yield return new TestCaseData(2, 2, true)
+					.SetName("WhenScaleIsSameAsPrecision");
+			}
+		}
+		
+		[Test]
+		[TestCaseSource(nameof(ConstructorFailTestCases))]
 		public void Constructor_ShouldFail(int precision, int scale, bool onlyPositive)
 		{
 			Assert.Throws<ArgumentException>(() => new NumberValidator(precision, scale, onlyPositive));
@@ -28,11 +43,12 @@ namespace HomeExercises
 					.SetName("HasNonZeroScalePart");
 				yield return new TestCaseData(new NumberValidator(17, 2, true), "0.42")
 					.Returns(true)
-					.SetName("ScalePartLengthIsTheSameAsExpected");
+					.SetName("ScalePartLengthIsTheSame_AsExpected");
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(ScaleTestCases))]
+		[Test] 
+		[TestCaseSource(nameof(ScaleTestCases))]
 		public bool IsValidNumber_TestScale(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
@@ -47,17 +63,18 @@ namespace HomeExercises
 					.SetName("HasNotFractionalPart");
 				yield return new TestCaseData(new NumberValidator(2, 1, true), "10")
 					.Returns(true)
-					.SetName("HasLengthSameAsPrecision");
+					.SetName("HasLengthSame_AsPrecision");
 				yield return new TestCaseData(new NumberValidator(2, 1, true), "1.1")
 					.Returns(true)
-					.SetName("IntegerAndFractionPartLengthSameAsPrecision");
+					.SetName("IntegerAndFractionPartLengthSame_AsPrecision");
 				yield return new TestCaseData(new NumberValidator(4, 2, true), "+1.23")
 					.Returns(true)
 					.SetName("HasFractionalPartAndPlusSign");
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(PrecisionTestCases))]
+		[Test] 
+		[TestCaseSource(nameof(PrecisionTestCases))]
 		public bool IsValidNumber_TestPrecision(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
@@ -67,6 +84,9 @@ namespace HomeExercises
 		{
 			get
 			{
+				yield return new TestCaseData(new NumberValidator(4, 2), "-1.23")
+					.Returns(true)
+					.SetName("CanBeNegativeWithoutOnlyPositiveNumberValidatorArgument");
 				yield return new TestCaseData(new NumberValidator(4, 2, false), "-1.23")
 					.Returns(true)
 					.SetName("HasFractionalPart");
@@ -79,7 +99,9 @@ namespace HomeExercises
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(NegativeSignTestCases))]
+		
+		[Test] 
+		[TestCaseSource(nameof(NegativeSignTestCases))]
 		public bool IsValidNumber_TestNegativeNumbers(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
@@ -88,23 +110,42 @@ namespace HomeExercises
 		private static IEnumerable IncorrectValidatorInputTestCases
 		{
 			get
-			{
+			{				
+				yield return new TestCaseData(new NumberValidator(4), "1.0")
+					.Returns(false)
+					.SetName("WhenNumberValidatorWithOneArgumentAndHasScale");
 				yield return new TestCaseData(new NumberValidator(4, 2, true), "-1.23")
 					.Returns(false)
 					.SetName("WhenOnlyPositiveAndSignIsMinus");
 				yield return new TestCaseData(new NumberValidator(3, 2, false), "-1.23")
 					.Returns(false)
-					.SetName("WhenPrecisionIsSameAsExpectedButValueIsSigned");
+					.SetName("WhenPrecisionIsSameAsExpectedButStringValidatorArgumentIsSigned");
 				yield return new TestCaseData(new NumberValidator(17, 2, true), "a.1d")
 					.Returns(false)
-					.SetName("WhenNumberStringHasNotOnlyNumbers");
+					.SetName("WhenStringValidatorArgumentHasNotOnlyNumbers");
 				yield return new TestCaseData(new NumberValidator(17, 2, true), "1.230")
 					.Returns(false)
-					.SetName("ScaleIsLargerThanExpected");
+					.SetName("WhenScaleIsLargerThanExpected");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), null)
+					.Returns(false)
+					.SetName("WhenNullStringValidatorArgument");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), "")
+					.Returns(false)
+					.SetName("WhenEmptyStringValidatorArgument");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), ".")
+					.Returns(false)
+					.SetName("WhenSingleDotStringValidatorArgument");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), ".12")
+					.Returns(false)
+					.SetName("WhenDotWithoutIntegerPartStringValidatorArgument");
+				yield return new TestCaseData(new NumberValidator(17, 2, false), "-+1.12")
+					.Returns(false)
+					.SetName("WhenTwoSign");
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(IncorrectValidatorInputTestCases))]
+		[Test]
+		[TestCaseSource(nameof(IncorrectValidatorInputTestCases))]
 		public bool IsValidNumber_TestIncorrectValidatorInputs(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
