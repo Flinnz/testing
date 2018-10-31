@@ -17,10 +17,8 @@ namespace HomeExercises
 
 			actualTsar.ShouldBeEquivalentTo(expectedTsar,
 				opt => opt
-					.Excluding(e => e.SelectedMemberInfo.Name == "Id" 
+					.Excluding(e => e.SelectedMemberInfo.Name == nameof(expectedTsar.Id) 
 					                && e.SelectedMemberInfo.DeclaringType == typeof(Person)));
-            //Это решение лучше, чем в CheckCurrentTsar_WithCustomEquality() тем,
-            //что при добавлении новых полей не надо добавлять новых строчек в код
         }
 
 
