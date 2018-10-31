@@ -1,77 +1,91 @@
 ﻿using System;
 using System.Collections;
-using System.Net.Mime;
-using System.Text.RegularExpressions;
-using FluentAssertions;
-using Microsoft.Win32;
 using NUnit.Framework;
 
 namespace HomeExercises
 {
 	public class NumberValidatorTests
 	{
-		[Test]
-		public void Constructor_ShouldFail_WhenPrecisionNegative()
+		[TestCase(-3, 2, true, TestName = "WhenPrecisionIsNegative")]
+		[TestCase(0, 2, true, TestName = "WhenPrecisionIsZero")]
+		[TestCase(3, -2, true, TestName = "WhenScaleIsNegative")]
+		[TestCase(1, 2, true, TestName = "WhenScaleIsLarger_ThanPrecision")]
+		[TestCase(2, 2, true, TestName = "WhenScaleIsSame_AsPrecision")]
+		public void Constructor_ShouldFail(int precision, int scale, bool onlyPositive)
 		{
-			Assert.Throws<ArgumentException>(() => new NumberValidator(-3, 2, true));
+			Assert.Throws<ArgumentException>(() => new NumberValidator(precision, scale, onlyPositive));
 		}
 
-		[Test]
-		public void Constructor_ShouldFail_WhenScaleNegative()
-		{
-			Assert.Throws<ArgumentException>(() => new NumberValidator(3, -2, true));
-		}
-
-		[Test]
-		public void Constructor_ShouldFail_WhenScaleIsLargerThanPrecision()
-		{
-			Assert.Throws<ArgumentException>(() => new NumberValidator(1, 2, true));
-		}
-
-		[Test]
-		public void Constructor_ShouldFail_WhenScaleEqualPrecision()
-		{
-			Assert.Throws<ArgumentException>(() => new NumberValidator(2, 2, true));
-		}
-
-		[Test]
-		public void Constructor_ShouldNotFail_WhenPositivePrecisionAndScale()
-		{
-			Assert.DoesNotThrow(() => new NumberValidator(2, 1, true));
-		}
-		
-		private static IEnumerable ValidTestCases
+		private static IEnumerable ScaleTestCases
 		{
 			get
 			{
 				yield return new TestCaseData(new NumberValidator(17, 2, true), "0.0")
 					.Returns(true)
-					.SetName("WhenHasFractionalPart");
-				yield return new TestCaseData(new NumberValidator(17, 2, true), "0")
+					.SetName("HasZeroScalePart");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), "0.4")
 					.Returns(true)
-					.SetName("WhenHasNotFractionalPart");
-				yield return new TestCaseData(new NumberValidator(4, 2, true), "+1.23")
+					.SetName("HasNonZeroScalePart");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), "0.42")
 					.Returns(true)
-					.SetName("WhenHasFractionalPartAndPlusSign");
-				yield return new TestCaseData(new NumberValidator(4, 2, false), "-1.23")
-					.Returns(true)
-					.SetName("WhenNegativeAndHasFractionalPart");
-				yield return new TestCaseData(new NumberValidator(4, 2, false), "-1")
-					.Returns(true)
-					.SetName("WhenNegativeAndHasNotFractionalPart");
-				yield return new TestCaseData(new NumberValidator(4, 2, false), "-001")
-					.Returns(true)
-					.SetName("WhenNegativeAndHasZerosBetweenSignAndNonZeroNumber");
+					.SetName("ScalePartLengthIsTheSameAsExpected");
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(ValidTestCases))]
-		public bool IsValidNumber_ShouldBeTrue(NumberValidator validator, string representation)
+		[Test, TestCaseSource(nameof(ScaleTestCases))]
+		public bool IsValidNumber_TestScale(NumberValidator validator, string representation)
+		{
+			return validator.IsValidNumber(representation);
+		}
+
+		private static IEnumerable PrecisionTestCases
+		{
+			get
+			{
+				yield return new TestCaseData(new NumberValidator(17, 2, true), "0")
+					.Returns(true)
+					.SetName("HasNotFractionalPart");
+				yield return new TestCaseData(new NumberValidator(2, 1, true), "10")
+					.Returns(true)
+					.SetName("HasLengthSameAsPrecision");
+				yield return new TestCaseData(new NumberValidator(2, 1, true), "1.1")
+					.Returns(true)
+					.SetName("IntegerAndFractionPartLengthSameAsPrecision");
+				yield return new TestCaseData(new NumberValidator(4, 2, true), "+1.23")
+					.Returns(true)
+					.SetName("HasFractionalPartAndPlusSign");
+			}
+		}
+		
+		[Test, TestCaseSource(nameof(PrecisionTestCases))]
+		public bool IsValidNumber_TestPrecision(NumberValidator validator, string representation)
+		{
+			return validator.IsValidNumber(representation);
+		}
+
+		private static IEnumerable NegativeSignTestCases
+		{
+			get
+			{
+				yield return new TestCaseData(new NumberValidator(4, 2, false), "-1.23")
+					.Returns(true)
+					.SetName("HasFractionalPart");
+				yield return new TestCaseData(new NumberValidator(4, 2, false), "-1")
+					.Returns(true)
+					.SetName("HasNotFractionalPart");
+				yield return new TestCaseData(new NumberValidator(4, 2, false), "-001")
+					.Returns(true)
+					.SetName("HasZerosBetweenSignAndNonZeroNumber");
+			}
+		}
+		
+		[Test, TestCaseSource(nameof(NegativeSignTestCases))]
+		public bool IsValidNumber_TestNegativeNumbers(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
 		}
 		
-		private static IEnumerable InvalidTestCases
+		private static IEnumerable IncorrectValidatorInputTestCases
 		{
 			get
 			{
@@ -81,69 +95,19 @@ namespace HomeExercises
 				yield return new TestCaseData(new NumberValidator(3, 2, false), "-1.23")
 					.Returns(false)
 					.SetName("WhenPrecisionIsSameAsExpectedButValueIsSigned");
-				yield return new TestCaseData(new NumberValidator(17, 2, true), "1.230")
-					.Returns(false)
-					.SetName("WhenScaleIsLargerThanExpected");
 				yield return new TestCaseData(new NumberValidator(17, 2, true), "a.1d")
 					.Returns(false)
 					.SetName("WhenNumberStringHasNotOnlyNumbers");
+				yield return new TestCaseData(new NumberValidator(17, 2, true), "1.230")
+					.Returns(false)
+					.SetName("ScaleIsLargerThanExpected");
 			}
 		}
 		
-		[Test, TestCaseSource(nameof(InvalidTestCases))]
-		public bool IsValidNumber_ShouldBeFalse(NumberValidator validator, string representation)
+		[Test, TestCaseSource(nameof(IncorrectValidatorInputTestCases))]
+		public bool IsValidNumber_TestIncorrectValidatorInputs(NumberValidator validator, string representation)
 		{
 			return validator.IsValidNumber(representation);
-		}
-	}
-
-	public class NumberValidator
-	{
-		private readonly Regex numberRegex;
-		private readonly bool onlyPositive;
-		private readonly int precision;
-		private readonly int scale;
-
-		public NumberValidator(int precision, int scale = 0, bool onlyPositive = false)
-		{
-			this.precision = precision;
-			this.scale = scale;
-			this.onlyPositive = onlyPositive;
-			if (precision <= 0)
-				throw new ArgumentException("precision must be a positive number");
-			if (scale < 0 || scale >= precision)
-				throw new ArgumentException("precision must be a non-negative number less or equal than precision");
-			numberRegex = new Regex(@"^([+-]?)(\d+)([.,](\d+))?$", RegexOptions.IgnoreCase);
-		}
-
-		public bool IsValidNumber(string value)
-		{
-			// Проверяем соответствие входного значения формату N(m,k), в соответствии с правилом, 
-			// описанным в Формате описи документов, направляемых в налоговый орган в электронном виде по телекоммуникационным
-			// каналам связи:
-			// Формат числового значения указывается в виде N(m.к), где m – максимальное количество знаков в числе,
-			// включая знак (для отрицательного числа), 
-			// целую и дробную часть числа без разделяющей десятичной точки, k – максимальное число знаков дробной части числа. 
-			// Если число знаков дробной части числа равно 0 (т.е. число целое), то формат числового значения имеет вид N(m).
-
-			if (string.IsNullOrEmpty(value))
-				return false;
-
-			var match = numberRegex.Match(value);
-			if (!match.Success)
-				return false;
-
-			// Знак и целая часть
-			var intPart = match.Groups[1].Value.Length + match.Groups[2].Value.Length;
-			// Дробная часть
-			var fracPart = match.Groups[4].Value.Length;
-
-			if (intPart + fracPart > precision || fracPart > scale)
-				return false;
-
-			if (onlyPositive && match.Groups[1].Value == "-")
-				return false;
-			return true;
 		}
 	}
 }

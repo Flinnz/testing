@@ -55,9 +55,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NumberValidator.cs" />
     <Compile Include="ObjectComparison.cs" />
+    <Compile Include="Person.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="NumberValidatorTests.cs" />
+    <Compile Include="TsarRegistry.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
