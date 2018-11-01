@@ -1,0 +1,57 @@
+using System;
+using System.Text.RegularExpressions;
+
+namespace HomeExercises
+{
+	public class NumberValidator
+	{
+		private readonly Regex numberRegex;
+		private readonly bool onlyPositive;
+		private readonly int precision;
+		private readonly int scale;
+
+		public NumberValidator(int precision, int scale = 0, bool onlyPositive = false)
+		{
+			this.precision = precision;
+			this.scale = scale;
+			this.onlyPositive = onlyPositive;
+			if (precision <= 0)
+				throw new ArgumentException("precision must be a positive number");
+			if (scale < 0 || scale >= precision)
+				throw new ArgumentException("scale must be a non-negative number and less than precision");
+			numberRegex = new Regex(@"^([+-]?)(\d+)([.,](\d+))?$", RegexOptions.IgnoreCase);
+		}
+
+
+		/// <summary>
+		/// Проверяем соответствие входного значения формату N(m,k), в соответствии с правилом, 
+		///	описанным в Формате описи документов, направляемых в налоговый орган в электронном виде по телекоммуникационным
+		///	каналам связи:
+		///	Формат числового значения указывается в виде N(m.к), где m – максимальное количество знаков в числе,
+		///	включая знак (для отрицательного числа), 
+		///	целую и дробную часть числа без разделяющей десятичной точки, k – максимальное число знаков дробной части числа. 
+		///	Если число знаков дробной части числа равно 0 (т.е. число целое), то формат числового значения имеет вид N(m).
+		/// </summary>
+		/// <param name="value">Строковое представление числа</param>
+		/// <returns>Корректность числа</returns>
+		public bool IsValidNumber(string value)
+		{
+			if (string.IsNullOrEmpty(value))
+				return false;
+
+			var match = numberRegex.Match(value);
+			if (!match.Success)
+				return false;
+
+			var integerPart = match.Groups[1].Value.Length + match.Groups[2].Value.Length;
+			var fractionalPart = match.Groups[4].Value.Length;
+
+			if (integerPart + fractionalPart > precision || fractionalPart > scale)
+				return false;
+
+			if (onlyPositive && match.Groups[1].Value == "-")
+				return false;
+			return true;
+		}
+	}
+}
